@@ -204,13 +204,14 @@ class FFmpegPostProcessor(PostProcessor):
                 return mobj.group(1)
         return None
 
-    def run_ffmpeg_multiple_files(self, input_paths, out_path, opts):
+    def run_ffmpeg_multiple_files(self, input_paths, out_path, opts, fixup=False):
         self.check_version()
 
         oldest_mtime = min(
             os.stat(encodeFilename(path)).st_mtime for path in input_paths)
 
-        opts += self._configuration_args()
+        if not fixup:
+            opts += self._configuration_args()
 
         files_cmd = []
         for path in input_paths:
@@ -239,8 +240,8 @@ class FFmpegPostProcessor(PostProcessor):
             raise FFmpegPostProcessorError(msg)
         self.try_utime(out_path, oldest_mtime, oldest_mtime)
 
-    def run_ffmpeg(self, path, out_path, opts):
-        self.run_ffmpeg_multiple_files([path], out_path, opts)
+    def run_ffmpeg(self, path, out_path, opts, fixup=False):
+        self.run_ffmpeg_multiple_files([path], out_path, opts, fixup)
 
     def _ffmpeg_filename_argument(self, fn):
         # Always use 'file:' because the filename may contain ':' (ffmpeg
@@ -557,7 +558,7 @@ class FFmpegFixupStretchedPP(FFmpegPostProcessor):
 
         options = ['-c', 'copy', '-aspect', '%f' % stretched_ratio]
         self._downloader.to_screen('[ffmpeg] Fixing aspect ratio in "%s"' % filename)
-        self.run_ffmpeg(filename, temp_filename, options)
+        self.run_ffmpeg(filename, temp_filename, options, fixup=True)
 
         os.remove(encodeFilename(filename))
         os.rename(encodeFilename(temp_filename), encodeFilename(filename))
@@ -575,7 +576,7 @@ class FFmpegFixupM4aPP(FFmpegPostProcessor):
 
         options = ['-c', 'copy', '-f', 'mp4']
         self._downloader.to_screen('[ffmpeg] Correcting container in "%s"' % filename)
-        self.run_ffmpeg(filename, temp_filename, options)
+        self.run_ffmpeg(filename, temp_filename, options, fixup=True)
 
         os.remove(encodeFilename(filename))
         os.rename(encodeFilename(temp_filename), encodeFilename(filename))
@@ -591,7 +592,7 @@ class FFmpegFixupM3u8PP(FFmpegPostProcessor):
 
             options = ['-c', 'copy', '-f', 'mp4', '-bsf:a', 'aac_adtstoasc']
             self._downloader.to_screen('[ffmpeg] Fixing malformed AAC bitstream in "%s"' % filename)
-            self.run_ffmpeg(filename, temp_filename, options)
+            self.run_ffmpeg(filename, temp_filename, options, fixup=True)
 
             os.remove(encodeFilename(filename))
             os.rename(encodeFilename(temp_filename), encodeFilename(filename))
